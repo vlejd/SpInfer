@@ -85,3 +85,37 @@ Note: Model_dir is different for SpInfer, Flash-llm and Faster-Transformer.
 > + `pip install -r requirements.txt`
 > + `bash run_ds_loop.sh`
 > + Check the results in `$SpInfer_HOME/end2end_inference/ds_scripts/ds_result/`
+
+## Benchmarking for SpMV
+
+Preparation
+
+```bash
+git clone https://github.com/vlejd/SpInfer.git
+cd SpInfer
+git submodule update --init --recursive
+source Init_SpInfer.sh
+cd $SpInfer_HOME/third_party/FasterTransformer && git apply ../ft_spinfer.patch
+cd $SpInfer_HOME/third_party/sputnik && git apply ../sputnik.patch
+```
+
+Compilation
+```bash
+cd $SpInfer_HOME/build && make -j
+cd $SpInfer_HOME/third_party/
+source build_sputnik.sh
+
+cd $SpInfer_HOME/third_party/
+source preparse_cusparselt.sh
+
+cd $SpInfer_HOME/kernel_benchmark
+source test_env
+make -j
+```
+
+Benchmarking
+```bash
+cd $SpInfer_HOME/kernel_benchmark
+source benchmark.sh
+```
+
