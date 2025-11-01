@@ -104,6 +104,9 @@ cd $SpInfer_HOME/build && make -j
 cd $SpInfer_HOME/third_party/
 source build_sputnik.sh
 
+cd $SpInfer_HOME/third_party/
+source preparse_cusparselt.sh
+
 cd $SpInfer_HOME/kernel_benchmark
 source test_env
 make -j spmm_test_sputnik
