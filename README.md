@@ -95,7 +95,6 @@ git clone https://github.com/vlejd/SpInfer.git
 cd SpInfer
 git submodule update --init --recursive
 source Init_SpInfer.sh
-cd $SpInfer_HOME/third_party/FasterTransformer && git apply ../ft_spinfer.patch
 cd $SpInfer_HOME/third_party/sputnik && git apply ../sputnik.patch
 ```
 
@@ -105,17 +104,14 @@ cd $SpInfer_HOME/build && make -j
 cd $SpInfer_HOME/third_party/
 source build_sputnik.sh
 
-cd $SpInfer_HOME/third_party/
-source preparse_cusparselt.sh
-
 cd $SpInfer_HOME/kernel_benchmark
 source test_env
-make -j
+make -j spmm_test_sputnik
 ```
 
-Benchmarking
+Benchmarking (only Sputnik is compatible with batch 1)
 ```bash
 cd $SpInfer_HOME/kernel_benchmark
-source benchmark.sh
+source run_sputnik.sh
 ```
 

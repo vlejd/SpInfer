@@ -4,12 +4,14 @@ K=(29568 4096 5120 8192  8192  5120 13824 20480  11008 5120 8192 3584  4096  143
 N=(1)
 SPLIT_K=(1)
 SPARSITY=(0 10 20 30 40 50 60 70 80 90 95)
-
+gpu_name=$(nvidia-smi --query-gpu=gpu_name --format=csv,noheader | head -n1 | sed -E 's/.*: (.*)/\1/' | tr ' ' '_')
+mkdir -p sputnik_results_16bit/${gpu_name}/
 
 if [ ${#M[@]} -ne ${#K[@]} ]; then
     echo "Error: M and K arrays must have the same length."
     exit 1
 fi
+
 
 for ((i=0; i<${#M[@]}; i++)); do
     m=${M[i]}
@@ -23,3 +25,5 @@ for ((i=0; i<${#M[@]}; i++)); do
         done
     done
 done
+
+mv sputnik_performance_results.csv sputnik_results_16bit/${gpu_name}/
