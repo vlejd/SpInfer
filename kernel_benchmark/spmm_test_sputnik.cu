@@ -25,6 +25,39 @@
 #include "./sputnik_utils.h"
 #include "sputnik/sputnik.h"
 
+
+class CacheFlush
+{
+public:
+    int l2_cache_size;
+    size_t cache_flush_data_size;
+    int8_t *cache_flush_data_d;
+
+    CacheFlush(int device)
+    {
+        l2_cache_size = 0;
+        (cudaDeviceGetAttribute(&l2_cache_size, cudaDevAttrL2CacheSize, device));
+        cache_flush_data_size = l2_cache_size * 2;
+        (cudaMalloc((void **)&cache_flush_data_d, cache_flush_data_size));
+        (cudaDeviceSynchronize());
+        checkLastCudaError(__LINE__);
+    }
+
+    ~CacheFlush()
+    {
+        cudaFree(cache_flush_data_d);
+    }
+
+    void flush()
+    {
+        (cudaMemset((void *)cache_flush_data_d, 0, cache_flush_data_size));
+        (cudaDeviceSynchronize());
+        (cudaGetLastError());
+        checkLastCudaError(__LINE__);
+    }
+};
+
+
 int main(int argc, char** argv)
 {
     if (argc != 6) {
@@ -90,6 +123,7 @@ int main(int argc, char** argv)
     sputnik_utils::SparseMatrix            sparse_matrix(M_GLOBAL, K_GLOBAL, A_float_h, sputnik_utils::IDENTITY, 4);
     sputnik_utils::CudaSparseMatrix<half2> sparse_matrix_gpu(sparse_matrix);
 
+    auto cache = CacheFlush(0);
     for (int i = 0; i < WARM_UP_ITERATION; i++)
         CUDA_CALL(sputnik::CudaSpmm(M_GLOBAL,
                                     K_GLOBAL,
@@ -102,8 +136,12 @@ int main(int argc, char** argv)
                                     reinterpret_cast<half2*>(B_Transposed),
                                     reinterpret_cast<half2*>(D_Sputnik),
                                     0));
-    cudaEventRecord(start);
+    float ms = 0;
+    float milliseconds_Sputnik = 0;
     for (int i = 0; i < BENCHMARK_ITERATION; i++)
+    {
+        cache.flush();
+        cudaEventRecord(start);
         CUDA_CALL(sputnik::CudaSpmm(M_GLOBAL,
                                     K_GLOBAL,
                                     N_GLOBAL,
@@ -115,10 +153,13 @@ int main(int argc, char** argv)
                                     reinterpret_cast<half2*>(B_Transposed),
                                     reinterpret_cast<half2*>(D_Sputnik),
                                     0));
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
-    float milliseconds_Sputnik = 0;
-    cudaEventElapsedTime(&milliseconds_Sputnik, start, stop);
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&ms, start, stop);
+        milliseconds_Sputnik += ms;
+        checkLastCudaError(__LINE__);
+    }
+
     milliseconds_Sputnik = milliseconds_Sputnik / BENCHMARK_ITERATION;
     float tflops_Sputnik =
         static_cast<double>((static_cast<double>(M_GLOBAL) * N_GLOBAL * K_GLOBAL * 2) / (milliseconds_Sputnik / 1000.))
