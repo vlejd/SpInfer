@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include "./sputnik_utils.h"
 #include "sputnik/sputnik.h"
+#include <chrono>
 
 
 class CacheFlush
@@ -136,6 +137,29 @@ int main(int argc, char** argv)
                                     reinterpret_cast<half2*>(B_Transposed),
                                     reinterpret_cast<half2*>(D_Sputnik),
                                     0));
+    //
+    int kernel_start_reps = 100;
+    double kernel_launch_time_us = 0.0;
+    for (int kernel_start_rep = 0; kernel_start_rep < kernel_start_reps; kernel_start_rep++)
+    {
+        auto chrono_start = std::chrono::high_resolution_clock::now();
+        CUDA_CALL(sputnik::CudaSpmm(M_GLOBAL,
+                                    K_GLOBAL,
+                                    N_GLOBAL,
+                                    sparse_matrix_gpu.NumElementsWithPadding(),
+                                    sparse_matrix_gpu.RowIndices(),
+                                    sparse_matrix_gpu.Values(),
+                                    sparse_matrix_gpu.RowOffsets(),
+                                    sparse_matrix_gpu.ColumnIndices(),
+                                    reinterpret_cast<half2*>(B_Transposed),
+                                    reinterpret_cast<half2*>(D_Sputnik),
+                                    0));
+        auto chrono_end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(chrono_end - chrono_start);
+        kernel_launch_time_us += double(duration.count());
+    }
+    kernel_launch_time_us = kernel_launch_time_us / kernel_start_reps;
+
     float ms = 0;
     float milliseconds_Sputnik = 0;
     for (int i = 0; i < BENCHMARK_ITERATION; i++)
@@ -176,6 +200,7 @@ int main(int argc, char** argv)
            SPLIT_K);
 // printf("******************************************Performance*******************************************\n");
     PrintPerformance("Sputnik", milliseconds_Sputnik, tflops_Sputnik, 0.0);
+    printf("Kernel launch time: %lf\n", kernel_launch_time_us);
 
     SaveSputnikPerformanceData("sputnik_performance_results.csv",
         M_GLOBAL, K_GLOBAL, N_GLOBAL, 
